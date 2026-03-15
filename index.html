@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sahur Sprint</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts for modern typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Theme Toggle -->
+        <button id="themeToggleBtn" class="theme-toggle">🌙 Sahur</button>
+
+        <!-- Game Canvas -->
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- Score HUD -->
+        <div id="scoreHUD" class="hidden">
+            <div class="score-box">
+                <span class="score-icon">🌙</span> Bahşiş: <span id="scoreValue">0</span>
+            </div>
+            
+            <!-- Powerup Indicators -->
+            <div id="powerupContainer">
+                <div id="x2Indicator" class="powerup-badge hidden">
+                    <span class="powerup-icon">x2</span>
+                    <div class="powerup-bar-bg"><div id="x2Bar" class="powerup-bar-fill"></div></div>
+                </div>
+                <div id="speedIndicator" class="powerup-badge hidden">
+                    <span class="powerup-icon">⚡</span>
+                    <div class="powerup-bar-bg"><div id="speedBar" class="powerup-bar-fill"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Start Screen -->
+        <div id="startScreen" class="overlay">
+            <div class="panel">
+                <h1 class="title">SAHUR <span class="highlight">SPRINT</span></h1>
+                <p class="subtitle">Run through the Ramadan night and collect bahşiş before dawn!</p>
+                <div class="controls-info">
+                    <p><strong>A / D</strong> or <strong>Arrows</strong> to switch lanes</p>
+                    <p><strong>W / Up</strong> to Jump</p>
+                    <p><strong>S / Down</strong> to Slide</p>
+                </div>
+                <button id="startBtn" class="btn pulse">Start Run</button>
+            </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="gameOverScreen" class="overlay hidden">
+            <div class="panel">
+                <h1 class="title text-danger">Caught!</h1>
+                <p class="final-score-text">Total Bahşiş: <span id="finalScore" class="highlight">0</span></p>
+                <div class="tips-box">
+                    <p>Remember: Hitting an obstacle once spawns a dog. Hitting twice = Game Over!</p>
+                </div>
+                <button id="restartBtn" class="btn">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Game Logic -->
+    <script src="game.js"></script>
+</body>
+</html>
