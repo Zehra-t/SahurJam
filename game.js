@@ -20,6 +20,65 @@ const x2Indicator = document.getElementById('x2Indicator');
 const x2Bar = document.getElementById('x2Bar');
 const speedIndicator = document.getElementById('speedIndicator');
 const speedBar = document.getElementById('speedBar');
+const bgMusic = document.getElementById('bgMusic');
+
+// ====== WEB AUDIO API SYNTH (No External MP3s Needed) ======
+let audioCtx;
+
+function initAudio() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+}
+
+function playCoinSound() {
+    if (!audioCtx) return;
+    let osc = audioCtx.createOscillator();
+    let gainNode = audioCtx.createGain();
+    
+    osc.type = 'sine';
+    // Classic coin chime: quick jump in frequency
+    osc.frequency.setValueAtTime(988, audioCtx.currentTime); // B5
+    osc.frequency.setValueAtTime(1318, audioCtx.currentTime + 0.1); // E6
+    
+    gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+    
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.3);
+}
+
+function playDogSound() {
+    if (!audioCtx) return;
+    // Bark consists of a short noise burst with low bandpass filter
+    let bufferSize = audioCtx.sampleRate * 0.2; // 0.2 seconds
+    let buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    let data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1; // White noise
+    }
+    
+    let noise = audioCtx.createBufferSource();
+    noise.buffer = buffer;
+    
+    let filter = audioCtx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 400; // Low, gruff frequency
+    filter.Q.value = 1.0;
+    
+    let gainNode = audioCtx.createGain();
+    gainNode.gain.setValueAtTime(0.6, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+    
+    noise.connect(filter);
+    filter.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    
+    noise.start();
+}
 
 let GAME_WIDTH = window.innerWidth;
 let GAME_HEIGHT = window.innerHeight;
@@ -241,6 +300,15 @@ function startGame() {
     lastTime = performance.now();
     
     spawnEntityDistance = 1000;
+
+    // Initialize procedural audio context on user interaction
+    initAudio();
+
+    // Start background music
+    if (bgMusic) {
+        bgMusic.currentTime = 0;
+        bgMusic.play().catch(e => console.log('Audio autoplay prevented by browser', e));
+    }
 }
 
 function handleHit() {
@@ -257,6 +325,9 @@ function handleHit() {
         // Push player slightly forward to recover, slow down speed momentarily
         currentSpeed *= 0.7; 
         
+        // Play procedural dog bark sound
+        playDogSound();
+
         floatingTexts.push({
             x: player.x, y: 150, z: player.z,
             text: 'WATCH OUT!', life: 1.5, color: '#ef4444'
@@ -267,6 +338,11 @@ function handleHit() {
 function gameOver() {
     gameState = 'GAMEOVER';
     cameraShake = 0.6; 
+
+    // Stop background music
+    if (bgMusic) {
+        bgMusic.pause();
+    }
     
     setTimeout(() => {
         scoreHUD.classList.add('hidden');
@@ -489,6 +565,9 @@ function handleCollision(entity) {
         scoreValue.innerText = score;
         spawnFloatingText(`+${gain}`, '#fde047', entity.x, 100);
         spawnCoinSparkles(entity.x);
+        
+        // Play procedural coin high-pitch chime
+        playCoinSound();
     } 
     else if (entity.type === 'powerup_x2') {
         activePowerups.x2 = X2_DURATION;
@@ -618,6 +697,8 @@ function drawBackground(time) {
         ctx.moveTo(bx - 10, by - flap); ctx.quadraticCurveTo(bx - 5, by, bx, by);
         ctx.quadraticCurveTo(bx + 5, by, bx + 10, by - flap);
         ctx.stroke();
+    }
+    
     // Sub-decorations: simple lanterns hanging from top
     ctx.strokeStyle = isIftarMode ? '#ea580c' : '#fde047'; // Softened stroke
     ctx.lineWidth = 2;
@@ -639,62 +720,58 @@ function drawBackground(time) {
         ctx.lineTo(lx_px + 10, HORIZON_Y * 0.15 + 15);
         ctx.fill();
     }
-    // 4) Static Mosque Silhouette Background Header (PRO/CLEAN VERSION)
+    // 4) Static Mosque Silhouette Background Header (CLASSIC SULTANAHMET/SULEYMANIYE STYLE)
     ctx.save();
     ctx.fillStyle = isIftarMode ? '#451a03' : '#020617'; 
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
     ctx.shadowBlur = 10;
     ctx.shadowOffsetY = -2;
 
     let mCenter = GAME_WIDTH / 2;
     let ground = HORIZON_Y;
     
-    // Smooth geometric Main Dome
+    // Very simple, classic silhouette geometry
+    
+    // Base block
+    ctx.fillRect(mCenter - 140, ground - 30, 280, 30);
+    
+    // Main central dome (large hemisphere)
     ctx.beginPath();
-    ctx.arc(mCenter, ground, 160, Math.PI, 0);
+    ctx.arc(mCenter, ground - 30, 100, Math.PI, 0);
     ctx.fill();
-    // Square base under Main Dome for sharp corners
-    ctx.fillRect(mCenter - 160, ground - 30, 320, 30);
 
-    // Symmetric Side Domes
+    // Two side half-domes attached directly to the main dome
     ctx.beginPath();
-    ctx.arc(mCenter - 140, ground - 30, 80, Math.PI, 0);
+    ctx.arc(mCenter - 80, ground - 30, 60, Math.PI, 0);
     ctx.fill();
-    ctx.fillRect(mCenter - 220, ground - 30, 160, 30);
-
     ctx.beginPath();
-    ctx.arc(mCenter + 140, ground - 30, 80, Math.PI, 0);
+    ctx.arc(mCenter + 80, ground - 30, 60, Math.PI, 0);
     ctx.fill();
-    ctx.fillRect(mCenter + 60, ground - 30, 160, 30);
-    
-    // Sharp Minarets (Clean geometry)
-    ctx.shadowBlur = 0; // Turn off shadow so thin lines look sharp
-    
-    let leftX = mCenter - 240;
-    let rightX = mCenter + 240;
-    let minHeight = 280;
-    let minW = 20;
-    
-    // Left Minaret Tower
-    ctx.fillRect(leftX - minW/2, ground - minHeight, minW, minHeight);
-    // Left Roof Cone
-    ctx.beginPath(); ctx.moveTo(leftX - minW/2 - 2, ground - minHeight);
-    ctx.lineTo(leftX + minW/2 + 2, ground - minHeight); ctx.lineTo(leftX, ground - minHeight - 40); ctx.fill();
-    // Left Balconies
-    ctx.fillRect(leftX - minW/2 - 6, ground - minHeight + 60, minW + 12, 6);
-    ctx.fillRect(leftX - minW/2 - 6, ground - minHeight + 140, minW + 12, 6);
 
-    // Right Minaret Tower
-    ctx.fillRect(rightX - minW/2, ground - minHeight, minW, minHeight);
-    // Right Roof Cone
-    ctx.beginPath(); ctx.moveTo(rightX - minW/2 - 2, ground - minHeight);
-    ctx.lineTo(rightX + minW/2 + 2, ground - minHeight); ctx.lineTo(rightX, ground - minHeight - 40); ctx.fill();
-    // Right Balconies
-    ctx.fillRect(rightX - minW/2 - 6, ground - minHeight + 60, minW + 12, 6);
-    ctx.fillRect(rightX - minW/2 - 6, ground - minHeight + 140, minW + 12, 6);
+    // Two Minarets (Classic, proportional, standing right next to the side domes)
+    ctx.shadowBlur = 0; // Disable shadow for clean vertical lines
+
+    function drawClassicMinaret(x, baseZ) {
+        let w = 12;
+        let h = 200;
+        // Tower
+        ctx.fillRect(x - w/2, baseZ - h, w, h);
+        // Single Balcony (Sherefe)
+        ctx.fillRect(x - w/2 - 4, baseZ - h + 60, w + 8, 4);
+        // Pointy roof (Külah)
+        ctx.beginPath();
+        ctx.moveTo(x - w/2, baseZ - h);
+        ctx.lineTo(x + w/2, baseZ - h);
+        ctx.lineTo(x, baseZ - h - 30);
+        ctx.fill();
+    }
+
+    drawClassicMinaret(mCenter - 150, ground);
+    drawClassicMinaret(mCenter + 150, ground);
     
-    // Straight solid ground block matching mosque color
-    ctx.fillRect(0, ground - 30, GAME_WIDTH, 30);
+    // Fill the rest of the ground simply
+    ctx.fillRect(0, ground - 10, GAME_WIDTH, 10);
+    
     ctx.restore();
 
     // 5) "Hoşgeldin Ramazan" Text (Drawn LAST so it's always in front!)
@@ -974,6 +1051,7 @@ function draw(dt, time) {
             ctx.shadowBlur = 0;
             ctx.globalAlpha = 1.0;
         }
+    }
 
     ctx.restore();
 }
